@@ -45,7 +45,7 @@ fi
 if [ -d .repo/local_manifests ] ;then
 	( cd .repo/local_manifests; git fetch; git reset --hard; git checkout origin/$localManifestBranch)
 else
-	git clone https://github.com/phhusson/treble_manifest .repo/local_manifests -b $localManifestBranch
+	git clone https://github.com/ichitodake/treble_manifest .repo/local_manifests -b $localManifestBranch
 fi
 
 if [ -z "$local_patches" ];then
