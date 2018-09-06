@@ -1,0 +1,81 @@
+diff --git a/res/values-es-rUS/arrays.xml b/res/values-es-rUS/arrays.xml
+index 6c5f6d7749..abc4fda8b7 100644
+--- a/res/values-es-rUS/arrays.xml
++++ b/res/values-es-rUS/arrays.xml
+@@ -37,6 +37,7 @@
+     <item msgid="7489864775127957179">"5 minutos"</item>
+     <item msgid="2314124409517439288">"10 minutos"</item>
+     <item msgid="6864027152847611413">"30 minutos"</item>
++    <item>"Nunca"</item>
+   </string-array>
+   <string-array name="dream_timeout_entries">
+     <item msgid="3149294732238283185">"Nunca"</item>
+diff --git a/res/values-ja/arrays.xml b/res/values-ja/arrays.xml
+index 20e2658036..d0d3be0646 100644
+--- a/res/values-ja/arrays.xml
++++ b/res/values-ja/arrays.xml
+@@ -47,6 +47,7 @@
+     <item msgid="5076853889688991690">"5分"</item>
+     <item msgid="1903860996174927898">"10分"</item>
+     <item msgid="6415509612413178727">"30分"</item>
++    <item>"すぐ"</item>
+   </string-array>
+   <string-array name="lock_after_timeout_entries">
+     <item msgid="8929270399652145290">"すぐ"</item>
+diff --git a/res/values-zh-rCN/arrays.xml b/res/values-zh-rCN/arrays.xml
+index 7d921cce74..8f46a8a9ab 100644
+--- a/res/values-zh-rCN/arrays.xml
++++ b/res/values-zh-rCN/arrays.xml
+@@ -37,6 +37,7 @@
+     <item msgid="7489864775127957179">"5分钟"</item>
+     <item msgid="2314124409517439288">"10分钟"</item>
+     <item msgid="6864027152847611413">"30分钟"</item>
++    <item>"永不"</item>
+   </string-array>
+   <string-array name="dream_timeout_entries">
+     <item msgid="3149294732238283185">"永不"</item>
+diff --git a/res/values-zh-rHK/arrays.xml b/res/values-zh-rHK/arrays.xml
+index 6521823901..d4cb972890 100644
+--- a/res/values-zh-rHK/arrays.xml
++++ b/res/values-zh-rHK/arrays.xml
+@@ -37,6 +37,7 @@
+     <item msgid="7489864775127957179">"5 分鐘"</item>
+     <item msgid="2314124409517439288">"10 分鐘"</item>
+     <item msgid="6864027152847611413">"30 分鐘"</item>
++    <item>"永不"</item>
+   </string-array>
+   <string-array name="dream_timeout_entries">
+     <item msgid="3149294732238283185">"永不"</item>
+diff --git a/res/values-zh-rTW/arrays.xml b/res/values-zh-rTW/arrays.xml
+index c4da95a7da..e53c5bae11 100644
+--- a/res/values-zh-rTW/arrays.xml
++++ b/res/values-zh-rTW/arrays.xml
+@@ -37,6 +37,7 @@
+     <item msgid="7489864775127957179">"5 分鐘"</item>
+     <item msgid="2314124409517439288">"10 分鐘"</item>
+     <item msgid="6864027152847611413">"30 分鐘"</item>
++    <item>"永不"</item>
+   </string-array>
+   <string-array name="dream_timeout_entries">
+     <item msgid="3149294732238283185">"永不"</item>
+diff --git a/res/values/arrays.xml b/res/values/arrays.xml
+index 5f39738a8a..4d82f00ce7 100644
+--- a/res/values/arrays.xml
++++ b/res/values/arrays.xml
+@@ -48,6 +48,7 @@
+         <item>5 minutes</item>
+         <item>10 minutes</item>
+         <item>30 minutes</item>
++        <item>Never</item>
+     </string-array>
+ 
+     <!-- Do not translate. -->
+@@ -66,6 +67,8 @@
+         <item>600000</item>
+         <!-- Do not translate. -->
+         <item>1800000</item>
++        <!-- Do not translate. -->
++        <item>0</item>
+     </string-array>
+ 
+     <!-- Display settings.  The delay in inactivity before the dream is shown. These are shown in a list dialog. -->

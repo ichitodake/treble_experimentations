@@ -1,0 +1,178 @@
+diff -urN base.a/packages/SystemUI/src/com/android/systemui/qs/tileimpl/QSFactoryImpl.java base.b/packages/SystemUI/src/com/android/systemui/qs/tileimpl/QSFactoryImpl.java
+--- base.a/packages/SystemUI/src/com/android/systemui/qs/tileimpl/QSFactoryImpl.java	2018-08-30 19:23:27.526608441 +0800
++++ base.b/packages/SystemUI/src/com/android/systemui/qs/tileimpl/QSFactoryImpl.java	2018-08-30 04:45:23.492132605 +0800
+@@ -44,6 +44,8 @@
+ import com.android.systemui.qs.QSTileHost;
+ import com.android.systemui.util.leak.GarbageMonitor;
+ 
++//import com.android.systemui.qs.tiles.HeadsetTile;
++
+ public class QSFactoryImpl implements QSFactory {
+ 
+     private static final String TAG = "QSFactory";
+@@ -98,6 +100,8 @@
+                 return new NightDisplayTile(mHost);
+             case "nfc":
+                 return new NfcTile(mHost);
++            //case "headset":
++              //  return new HeadsetTile(mHost);
+         }
+ 
+         // Intent tiles.
+diff -urN base.a/packages/SystemUI/src/com/android/systemui/qs/tiles/HeadsetTile.java.bak base.b/packages/SystemUI/src/com/android/systemui/qs/tiles/HeadsetTile.java.bak
+--- base.a/packages/SystemUI/src/com/android/systemui/qs/tiles/HeadsetTile.java.bak	1970-01-01 08:00:00.000000000 +0800
++++ base.b/packages/SystemUI/src/com/android/systemui/qs/tiles/HeadsetTile.java.bak	2018-08-30 04:29:51.000000000 +0800
+@@ -0,0 +1,127 @@
++/*
++ * Copyright (c) 2016, The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.systemui.qs.tiles;
++
++import android.app.Notification;
++import android.app.NotificationManager;
++import android.app.PendingIntent;
++import android.content.Context;
++import android.content.Intent;
++import android.provider.Settings;
++import android.util.Log;
++import android.widget.Switch;
++
++import com.android.internal.logging.MetricsLogger;
++import com.android.internal.logging.nano.MetricsProto.MetricsEvent;
++import com.android.systemui.R;
++import com.android.systemui.plugins.qs.QSTile.SignalState;
++import com.android.systemui.SystemUI;
++import com.android.systemui.qs.tileimpl.QSTileImpl;
++
++
++public class HeadsetTile extends QSTileImpl<SignalState> {
++
++    private Notification notification = new Notification();
++    private NotificationManager mNotificationManager = (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
++    private boolean headsetState;
++
++    public boolean isHeadsetState() {
++        return headsetState;
++    }
++
++    public void setHeadsetState(boolean headsetState) {
++        this.headsetState = headsetState;
++    }
++
++    public HeadsetTile(QSHost host) {
++        super(host);
++    }
++
++
++    @Override
++    public SignalState newTileState() {
++        return new SignalState();
++    }
++
++    @Override
++    protected void handleClick() {
++        //default mState.value is false
++        final boolean activated = !mState.value;
++        Log.d("jasun", "========activated========" + activated);
++        MetricsLogger.action(mContext, getMetricsCategory(), activated);
++        if (activated == true) {
++            SendNotification("Disable the headphone jack.");
++            setHeadsetState(activated);
++        } else {
++            mNotificationManager.cancel(1);
++            setHeadsetState(activated);
++        }
++        refreshState();
++    }
++
++
++    @Override
++    protected void handleUpdateState(SignalState state, Object arg) {
++        final boolean isActivated = isHeadsetState();
++        state.value = isActivated;
++        state.label = mContext.getString(R.string.status_bar_headset);
++        state.icon = ResourceIcon.get(isActivated ? R.drawable.ic_qs_headset_on
++                : R.drawable.ic_qs_headset_off);
++        state.contentDescription = mContext.getString(isActivated
++                ? R.string.quick_settings_headset_summary_on
++                : R.string.quick_settings_headset_summary_off);
++        state.minimalAccessibilityClassName = state.expandedAccessibilityClassName
++                = Switch.class.getName();
++    }
++
++    @Override
++    public int getMetricsCategory() {
++        return MetricsEvent.QS_headset;
++    }
++
++    @Override
++    public Intent getLongClickIntent() {
++        return new Intent(Settings.ACTION_headset_SETTINGS);
++    }
++
++    @Override
++    protected void setListening(boolean listening) {
++
++    }
++
++    private void SendNotification(String message) {
++        Intent intent = new Intent(mContext, SystemUI.class);
++        PendingIntent pendingIntent = PendingIntent.getActivity(mContext, 0,
++                intent, 0);
++        notification.icon = R.drawable.ic_qs_headset_on;
++        notification.tickerText = "HeadSet can not used";
++        notification.when = System.currentTimeMillis();
++        notification.defaults = Notification.DEFAULT_SOUND
++                | Notification.DEFAULT_VIBRATE;// set default sound
++//        notification.flags = Notification.FLAG_AUTO_CANCEL;// click auto disappeared
++        notification.flags = Notification.FLAG_NO_CLEAR;
++        notification.setLatestEventInfo(mContext, "Headset can not used", message, pendingIntent);
++
++        mNotificationManager.notify(1, notification);
++
++    }
++
++    @Override
++    public CharSequence getTileLabel() {
++        return mContext.getString(R.string.quick_settings_headset_label);
++    }
++}
+diff -urN base.a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarIconController.java base.b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarIconController.java
+--- base.a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarIconController.java	2018-08-30 19:23:27.554610112 +0800
++++ base.b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarIconController.java	2018-08-30 05:38:15.108438284 +0800
+@@ -76,7 +76,8 @@
+     public static ArraySet<String> getIconBlacklist(String blackListStr) {
+         ArraySet<String> ret = new ArraySet<>();
+         if (blackListStr == null) {
+-            blackListStr = "rotate,headset";
++            //blackListStr = "rotate,headset";
++            blackListStr = "rotate";
+         }
+         String[] blacklist = blackListStr.split(",");
+         for (String slot : blacklist) {
+diff -urN base.a/services/core/java/com/android/server/power/PowerManagerService.java base.b/services/core/java/com/android/server/power/PowerManagerService.java
+--- base.a/services/core/java/com/android/server/power/PowerManagerService.java	2018-08-30 19:23:27.726620368 +0800
++++ base.b/services/core/java/com/android/server/power/PowerManagerService.java	2018-08-30 02:18:43.466453061 +0800
+@@ -223,7 +223,8 @@
+     private static final String LAST_REBOOT_PROPERTY = "persist.sys.boot.reason";
+ 
+     // Add button light timeout
+-    private static final int BUTTON_ON_DURATION = 5 * 1000;
++    //private static final int BUTTON_ON_DURATION = 5 * 1000;
++    private static final int BUTTON_ON_DURATION = 0;
+ 
+     // File location for last reboot reason
+     private static final String LAST_REBOOT_LOCATION = "/data/misc/reboot/last_reboot_reason";

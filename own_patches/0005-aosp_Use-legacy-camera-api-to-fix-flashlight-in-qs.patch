@@ -1,0 +1,224 @@
+From 99578f27f2c5151802235f794054e0ca0c24d7a4 Mon Sep 17 00:00:00 2001
+From: ichitodake <ichitodake@gmail.com>
+Date: Thu, 6 Sep 2018 23:11:04 +0800
+Subject: [PATCH] Use legacy camera api to fix flashlight in qs
+
+Change-Id: Ic8218003d051a438d7325f5fa22975c90ebf4e86
+---
+ .../systemui/qs/tiles/FlashlightTile.java     | 138 +++++++++++++++---
+ 1 file changed, 118 insertions(+), 20 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/qs/tiles/FlashlightTile.java b/packages/SystemUI/src/com/android/systemui/qs/tiles/FlashlightTile.java
+index f2ead1cbca9..0eecaec29a1 100644
+--- a/packages/SystemUI/src/com/android/systemui/qs/tiles/FlashlightTile.java
++++ b/packages/SystemUI/src/com/android/systemui/qs/tiles/FlashlightTile.java
+@@ -31,20 +31,110 @@ import com.android.systemui.qs.QSHost;
+ import com.android.systemui.qs.tileimpl.QSTileImpl;
+ import com.android.systemui.statusbar.policy.FlashlightController;
+ 
++import android.hardware.Camera;
++import java.io.IOException;
++import java.util.List;
++import android.support.annotation.NonNull;
++import android.graphics.SurfaceTexture;
++
+ /** Quick settings tile: Control flashlight **/
+-public class FlashlightTile extends QSTileImpl<BooleanState> implements
+-        FlashlightController.FlashlightListener {
++public class FlashlightTile extends QSTileImpl<BooleanState> {
+ 
+     private final Icon mIcon = ResourceIcon.get(R.drawable.ic_signal_flashlight);
+-    private final FlashlightController mFlashlightController;
++    //private final FlashlightController mFlashlightController;
++    private static final String TAG = "FlashlightTile";
++    //private static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
++    private static final boolean DEBUG = true;
++    private Camera camera = null;
++    private final SurfaceTexture dummySurface = new SurfaceTexture(0);
++    /** Lock on {@code this} when accessing */
++    private boolean mFlashlightEnabled;
++    //private boolean mTorchAvailable;
+ 
+     public FlashlightTile(QSHost host) {
+         super(host);
+-        mFlashlightController = Dependency.get(FlashlightController.class);
+-    }
++        //mFlashlightController = Dependency.get(FlashlightController.class);
++    }
++    
++    private void tryInitCamera() {
++        //try {
++        //    mCameraId = getCameraId();
++        //} catch (Throwable e) {
++        //    Log.e(TAG, "Couldn't initialize.", e);
++        //    return;
++        //}
++        if (camera == null){
++            try {
++                // Acquire the Camera device
++
++                camera = Camera.open();
++            } catch (RuntimeException e) {
++                    throw new IllegalStateException("Failed to acquire the camera device!", e);
++              }
++
++        }
++
++            // Test to make sure it supports torch mode
++        if (camera == null || !supportsTorchMode(camera)) {
++            throw new IllegalStateException("No back-facing camera that supports torch mode!");
++        }
+ 
++        // Start the preview required to enable the flash
++        camera.startPreview();
++        try {
++            camera.setPreviewTexture(dummySurface);
++        } catch (IOException e) {
++            throw new IllegalStateException("Failed to set preview texture!", e);
++        }
++
++        //if (mCameraId != null) {
++        //if (camera != null) {
++        //    ensureHandler();
++            //mCameraManager.registerTorchCallback(mTorchCallback, mHandler);
++        //}
++    }
++    
++    private void tearDown() {
++        if (camera != null) {
++            camera.stopPreview();
++            camera.release();
++            camera = null;
++            mFlashlightEnabled = false;
++            //mTorchAvailable = true;
++        }
++    }
++    
++    private boolean supportsTorchMode(@NonNull Camera camera) {
++        Camera.Parameters params = camera.getParameters();
++        List<String> flashModes = params.getSupportedFlashModes();
++        return (flashModes != null && flashModes.contains(Camera.Parameters.FLASH_MODE_TORCH));
++    }
++    
++    private void setFlashlight(boolean enabled) {
++            //if (mCameraId == null) return;
++        if (enabled) {
++            if (!mFlashlightEnabled){
++                mFlashlightEnabled = enabled;
++            }
++            tryInitCamera();
++            Camera.Parameters params = camera.getParameters();
++            params.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
++            camera.setParameters(params);
++        }
++        else {
++            if (mFlashlightEnabled){
++                mFlashlightEnabled = enabled;
++            }
++            Camera.Parameters params = camera.getParameters();
++            params.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
++            camera.setParameters(params);
++            tearDown();
++        }
++    }
++    
+     @Override
+     protected void handleDestroy() {
++        tearDown();
+         super.handleDestroy();
+     }
+ 
+@@ -55,11 +145,11 @@ public class FlashlightTile extends QSTileImpl<BooleanState> implements
+ 
+     @Override
+     public void handleSetListening(boolean listening) {
+-        if (listening) {
+-            mFlashlightController.addCallback(this);
+-        } else {
+-            mFlashlightController.removeCallback(this);
+-        }
++        //if (listening) {
++        //    mFlashlightController.addCallback(this);
++        //} else {
++        //    mFlashlightController.removeCallback(this);
++        //}
+     }
+ 
+     @Override
+@@ -73,17 +163,22 @@ public class FlashlightTile extends QSTileImpl<BooleanState> implements
+ 
+     @Override
+     public boolean isAvailable() {
+-        return mFlashlightController.hasFlashlight();
++        //return mFlashlightController.hasFlashlight();
++        return true;
+     }
+ 
++    public boolean isEnabled() {
++        return mFlashlightEnabled;
++    }
++    
+     @Override
+     protected void handleClick() {
+-        if (ActivityManager.isUserAMonkey()) {
+-            return;
+-        }
++        //if (ActivityManager.isUserAMonkey()) {
++          //  return;
++        //}
+         boolean newState = !mState.value;
+         refreshState(newState);
+-        mFlashlightController.setFlashlight(newState);
++        setFlashlight(newState);
+     }
+ 
+     @Override
+@@ -93,7 +188,10 @@ public class FlashlightTile extends QSTileImpl<BooleanState> implements
+ 
+     @Override
+     protected void handleLongClick() {
+-        handleClick();
++        //handleClick();
++        boolean newState = false;
++        refreshState(newState);
++        setFlashlight(newState);
+     }
+ 
+     @Override
+@@ -102,7 +200,7 @@ public class FlashlightTile extends QSTileImpl<BooleanState> implements
+             state.slash = new SlashState();
+         }
+         state.label = mHost.getContext().getString(R.string.quick_settings_flashlight_label);
+-        if (!mFlashlightController.isAvailable()) {
++        if (!isAvailable()) {
+             state.icon = mIcon;
+             state.slash.isSlashed = true;
+             state.contentDescription = mContext.getString(
+@@ -117,7 +215,7 @@ public class FlashlightTile extends QSTileImpl<BooleanState> implements
+             }
+             state.value = value;
+         } else {
+-            state.value = mFlashlightController.isEnabled();
++            state.value = isEnabled();
+         }
+         state.icon = mIcon;
+         state.slash.isSlashed = !state.value;
+@@ -139,7 +237,7 @@ public class FlashlightTile extends QSTileImpl<BooleanState> implements
+             return mContext.getString(R.string.accessibility_quick_settings_flashlight_changed_off);
+         }
+     }
+-
++/*
+     @Override
+     public void onFlashlightChanged(boolean enabled) {
+         refreshState(enabled);
+@@ -153,5 +251,5 @@ public class FlashlightTile extends QSTileImpl<BooleanState> implements
+     @Override
+     public void onFlashlightAvailabilityChanged(boolean available) {
+         refreshState();
+-    }
++    }*/
+ }
+-- 
+2.17.1
+

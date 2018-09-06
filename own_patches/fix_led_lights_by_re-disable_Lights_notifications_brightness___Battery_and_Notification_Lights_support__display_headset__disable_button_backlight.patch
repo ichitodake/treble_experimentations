@@ -1,0 +1,480 @@
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarIconController.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarIconController.java
+index 3b9ee8bcd37..4cceaebe24b 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarIconController.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarIconController.java
+@@ -76,7 +76,8 @@ public interface StatusBarIconController {
+     public static ArraySet<String> getIconBlacklist(String blackListStr) {
+         ArraySet<String> ret = new ArraySet<>();
+         if (blackListStr == null) {
+-            blackListStr = "rotate,headset";
++            //blackListStr = "rotate,headset";
++            blackListStr = "rotate";
+         }
+         String[] blacklist = blackListStr.split(",");
+         for (String slot : blacklist) {
+diff --git a/services/core/java/com/android/server/BatteryService.java b/services/core/java/com/android/server/BatteryService.java
+index c4824de2d46..367a1f0964f 100644
+--- a/services/core/java/com/android/server/BatteryService.java
++++ b/services/core/java/com/android/server/BatteryService.java
+@@ -70,8 +70,8 @@ import com.android.server.am.BatteryStatsService;
+ import com.android.server.lights.Light;
+ import com.android.server.lights.LightsManager;
+ 
+-import org.lineageos.internal.notification.LedValues;
+-import org.lineageos.internal.notification.LineageBatteryLights;
++//import org.lineageos.internal.notification.LedValues;
++//import org.lineageos.internal.notification.LineageBatteryLights;
+ 
+ import java.io.File;
+ import java.io.FileDescriptor;
+@@ -195,7 +195,7 @@ public final class BatteryService extends SystemService {
+ 
+     private MetricsLogger mMetricsLogger;
+ 
+-    private LineageBatteryLights mLineageBatteryLights;
++    //private LineageBatteryLights mLineageBatteryLights;
+ 
+     public BatteryService(Context context) {
+         super(context);
+@@ -266,16 +266,16 @@ public final class BatteryService extends SystemService {
+                         false, obs, UserHandle.USER_ALL);
+                 updateBatteryWarningLevelLocked();
+             }
+-        } else if (phase == PHASE_BOOT_COMPLETED) {
+-            mLineageBatteryLights = new LineageBatteryLights(mContext,
+-                    new LineageBatteryLights.LedUpdater() {
+-                public void update() {
+-                    updateLedPulse();
+-                }
+-            });
+-
+-            // Update light state now that mLineageBatteryLights has been initialized.
+-            updateLedPulse();
++//        } else if (phase == PHASE_BOOT_COMPLETED) {
++//            mLineageBatteryLights = new LineageBatteryLights(mContext,
++//                    new LineageBatteryLights.LedUpdater() {
++//                public void update() {
++//                    updateLedPulse();
++//                }
++//            });
++//
++//            // Update light state now that mLineageBatteryLights has been initialized.
++//            updateLedPulse();
+         }
+     }
+ 
+@@ -1053,9 +1053,9 @@ public final class BatteryService extends SystemService {
+         Trace.traceEnd(Trace.TRACE_TAG_SYSTEM_SERVER);
+     }
+ 
+-    private synchronized void updateLedPulse() {
+-        mLed.updateLightsLocked();
+-    }
++//    private synchronized void updateLedPulse() {
++//        mLed.updateLightsLocked();
++//    }
+ 
+     private final class Led {
+         private final Light mBatteryLight;
+@@ -1086,36 +1086,29 @@ public final class BatteryService extends SystemService {
+          */
+         public void updateLightsLocked() {
+             // mHealthInfo could be null on startup (called by SettingsObserver)
+-            if (mHealthInfo == null) {
+-                Slog.w(TAG, "updateLightsLocked: mHealthInfo is null; skipping");
+-                return;
+-            }
+-            // mLineageBatteryLights is initialized during PHASE_BOOT_COMPLETED
+-            // This means we don't have Lineage battery settings yet so skip.
+-            if (mLineageBatteryLights == null) {
+-                if (DEBUG) {
+-                    Slog.w(TAG, "updateLightsLocked: mLineageBatteryLights is not yet ready; "
+-                            + "skipping");
++            final int level = mHealthInfo.batteryLevel;
++            final int status = mHealthInfo.batteryStatus;
++            if (level < mLowBatteryWarningLevel) {
++                if (status == BatteryManager.BATTERY_STATUS_CHARGING) {
++                    // Solid red when battery is charging
++                    mBatteryLight.setColor(mBatteryLowARGB);
++                } else {
++                    // Flash red when battery is low and not charging
++                    mBatteryLight.setFlashing(mBatteryLowARGB, Light.LIGHT_FLASH_TIMED,
++                            mBatteryLedOn, mBatteryLedOff);
++                }
++            } else if (status == BatteryManager.BATTERY_STATUS_CHARGING
++                    || status == BatteryManager.BATTERY_STATUS_FULL) {
++                if (status == BatteryManager.BATTERY_STATUS_FULL || level >= 90) {
++                    // Solid green when full or charging and nearly full
++                    mBatteryLight.setColor(mBatteryFullARGB);
++                } else {
++                    // Solid orange when charging and halfway full
++                    mBatteryLight.setColor(mBatteryMediumARGB);
+                 }
+-                return;
+-            }
+-            if (!mLineageBatteryLights.isSupported()) {
+-                return;
+-            }
+-
+-            LedValues ledValues = new LedValues(0 /* color */, mBatteryLedOn, mBatteryLedOff);
+-            mLineageBatteryLights.calcLights(ledValues, mHealthInfo.batteryLevel,
+-                    mHealthInfo.batteryStatus, mHealthInfo.batteryLevel <= mLowBatteryWarningLevel);
+-
+-            if (!ledValues.isEnabled()) {
+-                mBatteryLight.turnOff();
+-            } else if (ledValues.isPulsed()) {
+-                mBatteryLight.setModes(ledValues.getBrightness());
+-                mBatteryLight.setFlashing(ledValues.getColor(), Light.LIGHT_FLASH_TIMED,
+-                        ledValues.getOnMs(), ledValues.getOffMs());
+             } else {
+-                mBatteryLight.setModes(ledValues.getBrightness());
+-                mBatteryLight.setColor(ledValues.getColor());
++                // No lights if not charging and not low
++                mBatteryLight.turnOff();
+             }
+         }
+     }
+diff --git a/services/core/java/com/android/server/ConsumerIrService.java b/services/core/java/com/android/server/ConsumerIrService.java
+index 2ed6c77baa0..28759cd3b56 100644
+--- a/services/core/java/com/android/server/ConsumerIrService.java
++++ b/services/core/java/com/android/server/ConsumerIrService.java
+@@ -46,13 +46,13 @@ public class ConsumerIrService extends IConsumerIrService.Stub {
+         mWakeLock.setReferenceCounted(true);
+ 
+         mHasNativeHal = halOpen();
+-        if (mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CONSUMER_IR)) {
+-            if (!mHasNativeHal) {
+-                throw new RuntimeException("FEATURE_CONSUMER_IR present, but no IR HAL loaded!");
+-            }
+-        } else if (mHasNativeHal) {
+-            throw new RuntimeException("IR HAL present, but FEATURE_CONSUMER_IR is not set!");
+-        }
++        //if (mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CONSUMER_IR)) {
++        //    if (!mHasNativeHal) {
++        //        throw new RuntimeException("FEATURE_CONSUMER_IR present, but no IR HAL loaded!");
++        //    }
++        //} else if (mHasNativeHal) {
++        //    throw new RuntimeException("IR HAL present, but FEATURE_CONSUMER_IR is not set!");
++        //}
+     }
+ 
+     @Override
+diff --git a/services/core/java/com/android/server/lights/Light.java b/services/core/java/com/android/server/lights/Light.java
+index 67d8e20ffcc..b5ec603f5f7 100644
+--- a/services/core/java/com/android/server/lights/Light.java
++++ b/services/core/java/com/android/server/lights/Light.java
+@@ -1,6 +1,5 @@
+ /*
+  * Copyright (C) 2013 The Android Open Source Project
+- * Copyright (C) 2015 The CyanogenMod Project
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+@@ -44,7 +43,6 @@ public abstract class Light {
+     public abstract void setBrightness(int brightness, int brightnessMode);
+     public abstract void setColor(int color);
+     public abstract void setFlashing(int color, int mode, int onMS, int offMS);
+-    public abstract void setModes(int brightnessLevel);
+     public abstract void pulse();
+     public abstract void pulse(int color, int onMS);
+     public abstract void turnOff();
+diff --git a/services/core/java/com/android/server/lights/LightsService.java b/services/core/java/com/android/server/lights/LightsService.java
+index ea2e6f63052..47c1d9297fe 100644
+--- a/services/core/java/com/android/server/lights/LightsService.java
++++ b/services/core/java/com/android/server/lights/LightsService.java
+@@ -1,5 +1,4 @@
+ /* * Copyright (C) 2008 The Android Open Source Project
+- * Copyright (C) 2015 The CyanogenMod Project
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+@@ -101,14 +100,6 @@ public class LightsService extends SystemService {
+             }
+         }
+ 
+-        @Override
+-        public void setModes(int brightnessLevel) {
+-            synchronized (this) {
+-                mBrightnessLevel = brightnessLevel;
+-                mModesUpdate = true;
+-            }
+-        }
+-
+         @Override
+         public void pulse() {
+             pulse(0x00ffffff, 7);
+@@ -167,7 +158,7 @@ public class LightsService extends SystemService {
+             }
+ 
+             if (!mInitialized || color != mColor || mode != mMode || onMS != mOnMS ||
+-                    offMS != mOffMS || mBrightnessMode != brightnessMode || mModesUpdate) {
++                    offMS != mOffMS || mBrightnessMode != brightnessMode) {
+                 if (DEBUG) Slog.v(TAG, "setLight #" + mId + ": color=#"
+                         + Integer.toHexString(color) + ": brightnessMode=" + brightnessMode);
+                 mInitialized = true;
+@@ -177,12 +168,10 @@ public class LightsService extends SystemService {
+                 mOnMS = onMS;
+                 mOffMS = offMS;
+                 mBrightnessMode = brightnessMode;
+-                mModesUpdate = false;
+                 Trace.traceBegin(Trace.TRACE_TAG_POWER, "setLight(" + mId + ", 0x"
+                         + Integer.toHexString(color) + ")");
+                 try {
+-                    setLight_native(mId, color, mode, onMS, offMS,
+-                            brightnessMode, mBrightnessLevel);
++                    setLight_native(mId, color, mode, onMS, offMS, brightnessMode);
+                 } finally {
+                     Trace.traceEnd(Trace.TRACE_TAG_POWER);
+                 }
+@@ -198,7 +187,6 @@ public class LightsService extends SystemService {
+         private int mMode;
+         private int mOnMS;
+         private int mOffMS;
+-        private int mBrightnessLevel;
+         private boolean mFlashing;
+         private int mBrightnessMode;
+         private int mLastBrightnessMode;
+@@ -206,8 +194,6 @@ public class LightsService extends SystemService {
+         private boolean mVrModeEnabled;
+         private boolean mUseLowPersistenceForVR;
+         private boolean mInitialized;
+-        private boolean mLocked;
+-        private boolean mModesUpdate;
+     }
+ 
+     public LightsService(Context context) {
+@@ -255,5 +241,5 @@ public class LightsService extends SystemService {
+     };
+ 
+     static native void setLight_native(int light, int color, int mode,
+-            int onMS, int offMS, int brightnessMode, int brightnessLevel);
++            int onMS, int offMS, int brightnessMode);
+ }
+diff --git a/services/core/java/com/android/server/notification/NotificationManagerService.java b/services/core/java/com/android/server/notification/NotificationManagerService.java
+index 048ec054fd6..4be6a3d894c 100644
+--- a/services/core/java/com/android/server/notification/NotificationManagerService.java
++++ b/services/core/java/com/android/server/notification/NotificationManagerService.java
+@@ -1,7 +1,5 @@
+ /*
+  * Copyright (C) 2007 The Android Open Source Project
+- * Copyright (C) 2015 The CyanogenMod Project
+- * Copyright (C) 2017 The LineageOS Project
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+@@ -208,9 +206,6 @@ import com.android.server.policy.PhoneWindowManager;
+ import com.android.server.statusbar.StatusBarManagerInternal;
+ import com.android.server.wm.WindowManagerInternal;
+ 
+-import org.lineageos.internal.notification.LedValues;
+-import org.lineageos.internal.notification.LineageNotificationLights;
+-
+ import libcore.io.IoUtils;
+ 
+ import org.json.JSONException;
+@@ -409,7 +404,6 @@ public class NotificationManagerService extends SystemService {
+     private MetricsLogger mMetricsLogger;
+     private Predicate<String> mAllowedManagedServicePackages;
+ 
+-    private LineageNotificationLights mLineageNotificationLights;
+ 
+     private static class Archive {
+         final int mBufferSize;
+@@ -945,11 +939,8 @@ public class NotificationManagerService extends SystemService {
+     @GuardedBy("mNotificationLock")
+     private void clearLightsLocked() {
+         // light
+-        // clear only if lockscreen is not active
+-        if (!mLineageNotificationLights.isKeyguardLocked()) {
+-            mLights.clear();
+-            updateLightsLocked();
+-        }
++        mLights.clear();
++        updateLightsLocked();
+     }
+ 
+     protected final BroadcastReceiver mLocaleChangeReceiver = new BroadcastReceiver() {
+@@ -1139,10 +1130,7 @@ public class NotificationManagerService extends SystemService {
+                 }
+             } else if (action.equals(Intent.ACTION_USER_PRESENT)) {
+                 // turn off LED when user passes through lock screen
+-                // if lights with screen on is disabled.
+-                if (!mLineageNotificationLights.showLightsScreenOn()) {
+-                    mNotificationLight.turnOff();
+-                }
++                mNotificationLight.turnOff();
+             } else if (action.equals(Intent.ACTION_USER_SWITCHED)) {
+                 final int user = intent.getIntExtra(Intent.EXTRA_USER_HANDLE, USER_NULL);
+                 // reload per-user settings
+@@ -1419,7 +1407,6 @@ public class NotificationManagerService extends SystemService {
+                         new Intent(NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED_INTERNAL)
+                                 .addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT),
+                         UserHandle.ALL, android.Manifest.permission.MANAGE_NOTIFICATIONS);
+-                mLineageNotificationLights.setZenMode(mZenModeHelper.getZenMode());
+                 synchronized (mNotificationLock) {
+                     updateInterruptionFilterLocked();
+                 }
+@@ -1576,16 +1563,8 @@ public class NotificationManagerService extends SystemService {
+         IntentFilter localeChangedFilter = new IntentFilter(Intent.ACTION_LOCALE_CHANGED);
+         getContext().registerReceiver(mLocaleChangeReceiver, localeChangedFilter);
+ 
+-        mLineageNotificationLights = new LineageNotificationLights(getContext(),
+-                 new LineageNotificationLights.LedUpdater() {
+-            public void update() {
+-                updateNotificationPulse();
+-            }
+-        });
+-
+         publishBinderService(Context.NOTIFICATION_SERVICE, mService, /* allowIsolated= */ false,
+                 DUMP_FLAG_PRIORITY_CRITICAL | DUMP_FLAG_PRIORITY_NORMAL);
+-        publishBinderService(Context.NOTIFICATION_SERVICE, mService);
+         publishLocalService(NotificationManagerInternal.class, mInternalService);
+     }
+ 
+@@ -4844,8 +4823,8 @@ public class NotificationManagerService extends SystemService {
+         // light
+         // release the light
+         boolean wasShowLights = mLights.remove(key);
+-        if (record.getLight() != null
+-                && (aboveThreshold || isLedForcedOn(record))) {
++        if (record.getLight() != null && aboveThreshold
++                && ((record.getSuppressedVisualEffects() & SUPPRESSED_EFFECT_LIGHTS) == 0)) {
+             mLights.add(key);
+             updateLightsLocked();
+             if (mUseAttentionLight) {
+@@ -5950,32 +5929,19 @@ public class NotificationManagerService extends SystemService {
+             }
+         }
+ 
+-        NotificationRecord.Light light = ledNotification != null ?
+-                ledNotification.getLight() : null;
+-        if (ledNotification == null || mLineageNotificationLights == null || light == null) {
+-            mNotificationLight.turnOff();
+-            return;
+-        }
+-
+-        LedValues ledValues = new LedValues(light.color, light.onMs, light.offMs);
+-        mLineageNotificationLights.calcLights(ledValues, ledNotification.sbn.getPackageName(),
+-                ledNotification.sbn.getNotification(), mScreenOn || mInCall,
+-                ledNotification.getSuppressedVisualEffects());
+-
+-        if (!ledValues.isEnabled()) {
++        // Don't flash while we are in a call or screen is on
++        if (ledNotification == null || mInCall || mScreenOn) {
+             mNotificationLight.turnOff();
+         } else {
+-            mNotificationLight.setModes(ledValues.getBrightness());
+-            mNotificationLight.setFlashing(ledValues.getColor(), Light.LIGHT_FLASH_TIMED,
+-                    ledValues.getOnMs(), ledValues.getOffMs());
++            NotificationRecord.Light light = ledNotification.getLight();
++            if (light != null && mNotificationPulseEnabled) {
++                // pulse repeatedly
++                mNotificationLight.setFlashing(light.color, Light.LIGHT_FLASH_TIMED,
++                        light.onMs, light.offMs);
++            }
+         }
+     }
+ 
+-    private boolean isLedForcedOn(NotificationRecord nr) {
+-        return nr != null ?
+-                mLineageNotificationLights.isForcedOn(nr.sbn.getNotification()) : false;
+-    }
+-
+     @GuardedBy("mNotificationLock")
+     @NonNull List<NotificationRecord> findGroupNotificationsLocked(String pkg,
+             String groupKey, int userId) {
+diff --git a/services/core/java/com/android/server/notification/NotificationRecord.java b/services/core/java/com/android/server/notification/NotificationRecord.java
+index c41a263ceb3..609f095c406 100644
+--- a/services/core/java/com/android/server/notification/NotificationRecord.java
++++ b/services/core/java/com/android/server/notification/NotificationRecord.java
+@@ -227,8 +227,8 @@ public final class NotificationRecord {
+     }
+ 
+     private Light calculateLights() {
+-        // Lineage lights will set the default color later
+-        int defaultLightColor = 0;
++        int defaultLightColor = mContext.getResources().getColor(
++                com.android.internal.R.color.config_defaultNotificationColor);
+         int defaultLightOn = mContext.getResources().getInteger(
+                 com.android.internal.R.integer.config_defaultNotificationLedOn);
+         int defaultLightOff = mContext.getResources().getInteger(
+@@ -248,11 +248,7 @@ public final class NotificationRecord {
+                 if ((notification.defaults & Notification.DEFAULT_LIGHTS) != 0) {
+                     light = new Light(defaultLightColor, defaultLightOn,
+                             defaultLightOff);
+-                } else if (light.color == 0) {
+-                    // User has requested color 0.  However, lineage-sdk interprets
+-                    // color 0 as "supply a default" therefore adjust alpha to make
+-                    // the color still black but non-zero.
+-                    light = new Light(0x01000000, light.onMs, light.offMs);
++                
+                 }
+             } else {
+                 light = null;
+diff --git a/services/core/java/com/android/server/power/PowerManagerService.java b/services/core/java/com/android/server/power/PowerManagerService.java
+index 0b06e7fc4ae..e12f235e253 100644
+--- a/services/core/java/com/android/server/power/PowerManagerService.java
++++ b/services/core/java/com/android/server/power/PowerManagerService.java
+@@ -223,7 +223,8 @@ public final class PowerManagerService extends SystemService
+     private static final String LAST_REBOOT_PROPERTY = "persist.sys.boot.reason";
+ 
+     // Add button light timeout
+-    private static final int BUTTON_ON_DURATION = 5 * 1000;
++    //private static final int BUTTON_ON_DURATION = 5 * 1000;
++    private static final int BUTTON_ON_DURATION = 0;
+ 
+     // File location for last reboot reason
+     private static final String LAST_REBOOT_LOCATION = "/data/misc/reboot/last_reboot_reason";
+diff --git a/services/core/jni/com_android_server_ConsumerIrService.cpp b/services/core/jni/com_android_server_ConsumerIrService.cpp
+index 2ca348b3ae4..4cb173e6cd2 100644
+--- a/services/core/jni/com_android_server_ConsumerIrService.cpp
++++ b/services/core/jni/com_android_server_ConsumerIrService.cpp
+@@ -36,7 +36,8 @@ static sp<IConsumerIr> mHal;
+ 
+ static jboolean halOpen(JNIEnv* /* env */, jobject /* obj */) {
+     // TODO(b/31632518)
+-    mHal = IConsumerIr::getService();
++    //mHal = IConsumerIr::getService();
++    mHal = IConsumerIr::tryGetService();
+     return mHal != nullptr;
+ }
+ 
+diff --git a/services/core/jni/com_android_server_lights_LightsService.cpp b/services/core/jni/com_android_server_lights_LightsService.cpp
+index 01ddecaeff5..862272f1b84 100644
+--- a/services/core/jni/com_android_server_lights_LightsService.cpp
++++ b/services/core/jni/com_android_server_lights_LightsService.cpp
+@@ -163,8 +163,7 @@ static void setLight_native(
+         jint flashMode,
+         jint onMS,
+         jint offMS,
+-        jint brightnessMode,
+-        jint brightnessLevel) {
++        jint brightnessMode){
+ 
+     if (!validate(light, flashMode, brightnessMode)) {
+         return;
+@@ -176,15 +175,6 @@ static void setLight_native(
+         return;
+     }
+ 
+-    if (brightnessLevel > 0 && brightnessLevel <= 0xFF) {
+-        int colorAlpha = (colorARGB & 0xFF000000) >> 24;
+-        if (colorAlpha == 0x00) {
+-            colorAlpha = 0xFF;
+-        }
+-        colorAlpha = (colorAlpha * brightnessLevel) / 0xFF;
+-        colorARGB = (colorAlpha << 24) + (colorARGB & 0x00FFFFFF);
+-    }
+-
+     Type type = static_cast<Type>(light);
+     LightState state = constructState(
+         colorARGB, flashMode, onMS, offMS, brightnessMode);
+@@ -198,7 +188,7 @@ static void setLight_native(
+ }
+ 
+ static const JNINativeMethod method_table[] = {
+-    { "setLight_native", "(IIIIIII)V", (void*)setLight_native },
++    { "setLight_native", "(IIIIII)V", (void*)setLight_native },
+ };
+ 
+ int register_android_server_LightsService(JNIEnv *env) {

@@ -6,7 +6,7 @@ mkdir -p release/$rom_fp/
 set -e
 
 if [ "$#" -le 1 ];then
-	echo "Usage: $0 <android-8.1> <carbon|lineage|rr> '# of jobs'"
+	echo "Usage: $0 <android-9.0> <carbon|lineage|rr|aosp> '# of jobs'"
 	exit 0
 fi
 localManifestBranch=$1
@@ -33,13 +33,17 @@ else
 fi
 
 #We don't want to replace from AOSP since we'll be applying patches by hand
-rm -f .repo/local_manifests/replace.xml
+rm -rf .repo/local_manifests
+rm -rf .repo/manifest.xml
+rm -rf .repo/manifests
 if [ "$rom" == "carbon" ];then
 	repo init -u https://github.com/CarbonROM/android -b cr-6.1
 elif [ "$rom" == "lineage" ];then
-	repo init -u https://github.com/LineageOS/android.git -b lineage-15.1
+	repo init -u https://github.com/LineageOS/android.git -b lineage-16.0
 elif [ "$rom" == "rr" ];then
 	repo init -u https://github.com/ResurrectionRemix/platform_manifest.git -b oreo
+elif [ "$rom" == "aosp" ];then
+        repo init -u https://android.googlesource.com/platform/manifest -b android-9.0.0_r8
 fi
 
 if [ -d .repo/local_manifests ] ;then
@@ -62,10 +66,20 @@ fi
 
 #We don't want to replace from AOSP since we'll be applying patches by hand
 rm -f .repo/local_manifests/replace.xml
-
+rm -f .repo/local_manifests/foss.xml
+rm -f .repo/local_manifests/opengapps.xml
+# Remove exfat entry from local_manifest if it exists in ROM manifest 
+if grep -rqF exfat .repo/manifests || grep -qF exfat .repo/manifest.xml;then
+    sed -i -E '/external\/exfat/d' .repo/local_manifests/manifest.xml
+fi
 repo sync -c -j$jobs --force-sync
+if [ $rom != "aosp" ];then
 rm -f device/*/sepolicy/common/private/genfs_contexts
 (cd device/phh/treble; git clean -fdx; bash generate.sh $rom)
+else
+(cd device/phh/treble; git clean -fdx; bash generate.sh)
+fi
+
 
 sed -i -e 's/BOARD_SYSTEMIMAGE_PARTITION_SIZE := 1610612736/BOARD_SYSTEMIMAGE_PARTITION_SIZE := 2147483648/g' device/phh/treble/phhgsi_arm64_a/BoardConfig.mk
 
@@ -75,25 +89,35 @@ if [ -f vendor/rr/prebuilt/common/Android.mk ];then
         vendor/rr/prebuilt/common/Android.mk
 fi
 
+if [ $rom == "aosp" ];then
+bash "$(dirname "$0")/apply-patches_aosp.sh" patches
+else
 bash "$(dirname "$0")/apply-patches.sh" patches
+fi
 
 . build/envsetup.sh
 
 buildVariant() {
 	lunch $1
-	make WITHOUT_CHECK_API=true BUILD_NUMBER=$rom_fp installclean
-	make WITHOUT_CHECK_API=true BUILD_NUMBER=$rom_fp -j$jobs systemimage
-	make WITHOUT_CHECK_API=true BUILD_NUMBER=$rom_fp vndk-test-sepolicy
+    if [ $rom != "aosp" ];then
+        make WITHOUT_CHECK_API=true BUILD_NUMBER=$rom_fp installclean
+        make WITHOUT_CHECK_API=true BUILD_NUMBER=$rom_fp -j$jobs systemimage
+        make WITHOUT_CHECK_API=true BUILD_NUMBER=$rom_fp vndk-test-sepolicy
+    else
+        make BUILD_NUMBER=$rom_fp installclean
+        make BUILD_NUMBER=$rom_fp -j$jobs systemimage
+        make BUILD_NUMBER=$rom_fp vndk-test-sepolicy
+    fi
 	xz -c $OUT/system.img > release/$rom_fp/system-${2}.img.xz
 }
 
 repo manifest -r > release/$rom_fp/manifest.xml
 buildVariant treble_arm64_avN-userdebug arm64-aonly-vanilla-nosu
-buildVariant treble_arm64_agS-userdebug arm64-aonly-gapps-su
-buildVariant treble_arm64_bvN-userdebug arm64-ab-vanilla-nosu
-buildVariant treble_arm64_bgS-userdebug arm64-ab-gapps-su
-buildVariant treble_arm_avN-userdebug arm-aonly-vanilla-nosu
-buildVariant treble_arm_aoS-userdebug arm-aonly-gapps
+#buildVariant treble_arm64_agS-userdebug arm64-aonly-gapps-su
+#buildVariant treble_arm64_bvN-userdebug arm64-ab-vanilla-nosu
+#buildVariant treble_arm64_bgS-userdebug arm64-ab-gapps-su
+#buildVariant treble_arm_avN-userdebug arm-aonly-vanilla-nosu
+#buildVariant treble_arm_aoS-userdebug arm-aonly-gapps
 
 if [ "$release" == true ];then
     (

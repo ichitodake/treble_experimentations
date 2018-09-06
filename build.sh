@@ -10,11 +10,11 @@ if [ -z "$USER" ];then
 fi
 export LC_ALL=C
 
-aosp="android-8.1.0_r43"
+aosp="android-8.1.0_r46"
 phh="android-8.1"
 
 if [ "$1" == "android-9.0" ];then
-    aosp="android-9.0.0_r1"
+    aosp="android-9.0.0_r8"
     phh="android-9.0"
 fi
 
@@ -30,6 +30,7 @@ if [ -d .repo/local_manifests ] ;then
 else
 	git clone https://github.com/ichitodake/treble_manifest .repo/local_manifests -b $phh
 fi
+rm .repo/local_manifests/opengapps.xml
 repo sync -c -j 16 --force-sync
 (cd device/phh/treble; git clean -fdx; bash generate.sh)
 #(cd vendor/foss; git clean -fdx; bash update.sh)
@@ -48,7 +49,7 @@ repo manifest -r > release/$rom_fp/manifest.xml
 bash "$originFolder"/list-patches.sh
 cp patches.zip release/$rom_fp/patches.zip
 
-buildVariant treble_arm64_avN-userdebug arm64-aonly-vanilla-nosu
+#buildVariant treble_arm64_avN-userdebug arm64-aonly-vanilla-nosu
 #[ "$1" != "android-9.0" ] && buildVariant treble_arm64_agS-userdebug arm64-aonly-gapps-su
 #[ "$1" != "android-9.0" ] && buildVariant treble_arm64_afS-userdebug arm64-aonly-floss-su
 

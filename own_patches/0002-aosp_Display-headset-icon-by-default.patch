@@ -1,0 +1,27 @@
+From c657efcd11c1f87ef50b6ff95a1536b41de14480 Mon Sep 17 00:00:00 2001
+From: ichitodake <ichitodake@gmail.com>
+Date: Wed, 5 Sep 2018 23:21:46 +0800
+Subject: [PATCH] Display headset icon by default
+
+Change-Id: I1ff58885e94d40b9910263c7d57a07eab40bbfc6
+---
+ .../systemui/statusbar/phone/StatusBarIconController.java      | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarIconController.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarIconController.java
+index 3b9ee8bcd37..4cceaebe24b 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarIconController.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarIconController.java
+@@ -76,7 +76,8 @@ public interface StatusBarIconController {
+     public static ArraySet<String> getIconBlacklist(String blackListStr) {
+         ArraySet<String> ret = new ArraySet<>();
+         if (blackListStr == null) {
+-            blackListStr = "rotate,headset";
++            //blackListStr = "rotate,headset";
++            blackListStr = "rotate";
+         }
+         String[] blacklist = blackListStr.split(",");
+         for (String slot : blacklist) {
+-- 
+2.17.1
+

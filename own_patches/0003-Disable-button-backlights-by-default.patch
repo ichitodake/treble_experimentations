@@ -1,0 +1,27 @@
+From 5f21f1083921dab71d53bd3e2f700536697dc382 Mon Sep 17 00:00:00 2001
+From: ichitodake <ichitodake@gmail.com>
+Date: Tue, 4 Sep 2018 18:24:41 +0800
+Subject: [PATCH] Disable button backlight
+
+Change-Id: Idbaae61337fa8e22e7e184f4c8008a9d891fe3de
+---
+ .../java/com/android/server/power/PowerManagerService.java     | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/power/PowerManagerService.java b/services/core/java/com/android/server/power/PowerManagerService.java
+index 49551f374aa..dad194c7008 100644
+--- a/services/core/java/com/android/server/power/PowerManagerService.java
++++ b/services/core/java/com/android/server/power/PowerManagerService.java
+@@ -2067,7 +2067,8 @@ public final class PowerManagerService extends SystemService
+                             if (mButtonBrightnessOverrideFromWindowManager >= 0) {
+                                 buttonBrightness = mButtonBrightnessOverrideFromWindowManager;
+                             } else {
+-                                buttonBrightness = mButtonBrightness;
++                                //buttonBrightness = mButtonBrightness;
++                                buttonBrightness = 0;
+                             }
+ 
+                             mLastButtonActivityTime = mButtonLightOnKeypressOnly ?
+-- 
+2.17.1
+
