@@ -1,0 +1,48 @@
+From 8a789ac78129a0547f9056f268b5c50283fa010f Mon Sep 17 00:00:00 2001
+From: ichitodake <ichitodake@gmail.com>
+Date: Fri, 7 Sep 2018 01:05:21 +0800
+Subject: [PATCH] Add quick settings pull down with one finger
+
+Change-Id: I20fc4bc425115407a47e10a93045c3c43252cabe
+---
+ .../statusbar/phone/NotificationPanelView.java  | 17 ++++++++++++++++-
+ 1 file changed, 16 insertions(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationPanelView.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationPanelView.java
+index baf16370383..9860763ce35 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationPanelView.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationPanelView.java
+@@ -283,6 +283,8 @@ public class NotificationPanelView extends PanelView implements
+             .setAnimationFinishListener(mAnimatorListenerAdapter)
+             .setCustomInterpolator(PANEL_ALPHA.getProperty(), Interpolators.ALPHA_IN);
+ 
++    private int mOneFingerQuickSettingsIntercept = 1; // 1: Right side pulldown 2: Left side pulldown
++
+     public NotificationPanelView(Context context, AttributeSet attrs) {
+         super(context, attrs);
+         setWillNotDraw(!DEBUG);
+@@ -975,7 +977,20 @@ public class NotificationPanelView extends PanelView implements
+                 && (event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)
+                         || event.isButtonPressed(MotionEvent.BUTTON_TERTIARY));
+ 
+-        return twoFingerDrag || stylusButtonClickDrag || mouseButtonClickDrag;
++        final float w = getMeasuredWidth();
++        final float x = event.getX();
++        float region = w * 1.f / 4.f; // TODO overlay region fraction?
++        boolean showQsOverride = false;
++         switch (mOneFingerQuickSettingsIntercept) {
++            case 1: // Right side pulldown
++                showQsOverride = isLayoutRtl() ? x < region : w - region < x;
++                break;
++            case 2: // Left side pulldown
++                showQsOverride = isLayoutRtl() ? w - region < x : x < region;
++                break;
++        }
++        showQsOverride &= mStatusBarState == StatusBarState.SHADE;
++         return twoFingerDrag || showQsOverride || stylusButtonClickDrag || mouseButtonClickDrag;
+     }
+ 
+     private void handleQsDown(MotionEvent event) {
+-- 
+2.17.1
+

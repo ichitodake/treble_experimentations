@@ -11,6 +11,8 @@ cp "$(dirname "$0")"/own_patches/0002-aosp_Display-headset-icon-by-default.patch
 cp "$(dirname "$0")"/own_patches/0003-aosp_Disable-button-backlight.patch $patches/patches/platform_frameworks_base/0052-aosp_Disable-button-backlight.patch
 cp "$(dirname "$0")"/own_patches/0004-aosp_Remove-system-error-dialog-on-startup.patch $patches/patches/platform_frameworks_base/0053-aosp_Remove-system-error-dialog-on-startup.patch
 cp "$(dirname "$0")"/own_patches/0005-aosp_Use-legacy-camera-api-to-fix-flashlight-in-qs.patch $patches/patches/platform_frameworks_base/0054-aosp_Use-legacy-camera-api-to-fix-flashlight-in-qs.patch
+cp "$(dirname "$0")"/own_patches/0006-aosp_Add-double-tap-to-sleep-gesture.patch $patches/patches/platform_frameworks_base/0055-aosp_Add-double-tap-to-sleep-gesture.patch
+cp "$(dirname "$0")"/own_patches/0007-aosp_Add-quick-settings-pull-down-with-one-finger.patch $patches/patches/platform_frameworks_base/0056-aosp_Add-quick-settings-pull-down-with-one-finger.patch
 
 for project in $(cd $patches/patches; echo *);do
 	p="$(tr _ / <<<$project |sed -e 's;platform/;;g')"

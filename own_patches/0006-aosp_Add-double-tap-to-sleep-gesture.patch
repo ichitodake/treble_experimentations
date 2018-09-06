@@ -1,0 +1,130 @@
+From 61afe1b6b326b52d553b9d775c12106359aaa1c7 Mon Sep 17 00:00:00 2001
+From: ichitodake <ichitodake@gmail.com>
+Date: Fri, 7 Sep 2018 00:37:35 +0800
+Subject: [PATCH] Add double tap to sleep gesture
+
+Change-Id: I4b5ed70baea48d1b413efc432f6ba810f5b656e2
+---
+ .../phone/NotificationPanelView.java          | 18 +++++++++++++
+ .../statusbar/phone/StatusBarWindowView.java  | 27 +++++++++++++++++++
+ 2 files changed, 45 insertions(+)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationPanelView.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationPanelView.java
+index 2f18aad9612..baf16370383 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationPanelView.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationPanelView.java
+@@ -48,6 +48,7 @@ import android.view.ViewGroup;
+ import android.view.WindowInsets;
+ import android.view.accessibility.AccessibilityManager;
+ import android.widget.FrameLayout;
++import android.view.GestureDetector;
+ 
+ import com.android.internal.logging.MetricsLogger;
+ import com.android.internal.logging.nano.MetricsProto.MetricsEvent;
+@@ -252,6 +253,9 @@ public class NotificationPanelView extends PanelView implements
+     private ArrayList<Runnable> mVerticalTranslationListener = new ArrayList<>();
+     private HeadsUpAppearanceController mHeadsUpAppearanceController;
+ 
++    private boolean mDoubleTapToSleepEnabled = true;
++    private GestureDetector mDoubleTapGesture;
++
+     private int mPanelAlpha;
+     private int mCurrentPanelAlpha;
+     private final Paint mAlphaPaint = new Paint();
+@@ -288,6 +292,16 @@ public class NotificationPanelView extends PanelView implements
+         setAccessibilityPaneTitle(determineAccessibilityPaneTitle());
+         mAlphaPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.MULTIPLY));
+         setPanelAlpha(255, false /* animate */);
++        mDoubleTapGesture = new GestureDetector(mContext,
++                new GestureDetector.SimpleOnGestureListener() {
++            @Override
++            public boolean onDoubleTap(MotionEvent e) {
++                if (mPowerManager != null) {
++                    mPowerManager.goToSleep(e.getEventTime());
++                }
++                return true;
++            }
++        });
+     }
+ 
+     public void setStatusBar(StatusBar bar) {
+@@ -861,6 +875,10 @@ public class NotificationPanelView extends PanelView implements
+         if (mBlockTouches || (mQs != null && mQs.isCustomizing())) {
+             return false;
+         }
++        if (mDoubleTapToSleepEnabled
++                && mStatusBarState == StatusBarState.KEYGUARD) {
++            mDoubleTapGesture.onTouchEvent(event);
++        }
+         initDownStates(event);
+         if (mListenForHeadsUp && !mHeadsUpTouchHelper.isTrackingHeadsUp()
+                 && mHeadsUpTouchHelper.onInterceptTouchEvent(event)) {
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarWindowView.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarWindowView.java
+index a79a41b0779..648bc6a6443 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarWindowView.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarWindowView.java
+@@ -65,6 +65,11 @@ import com.android.systemui.statusbar.stack.NotificationStackScrollLayout;
+ import java.io.FileDescriptor;
+ import java.io.PrintWriter;
+ 
++import android.os.PowerManager;
++import android.view.GestureDetector;
++import com.android.systemui.Dependency;
++import com.android.systemui.tuner.TunerService;
++
+ 
+ public class StatusBarWindowView extends FrameLayout {
+     public static final String TAG = "StatusBarWindowView";
+@@ -83,6 +88,10 @@ public class StatusBarWindowView extends FrameLayout {
+     private final Paint mTransparentSrcPaint = new Paint();
+     private FalsingManager mFalsingManager;
+ 
++    private boolean mDoubleTapToSleepEnabled = true;
++    private int mQuickQsTotalHeight;
++    private GestureDetector mDoubleTapGesture;
++
+     // Implements the floating action mode for TextView's Cut/Copy/Past menu. Normally provided by
+     // DecorView, but since this is a special window we have to roll our own.
+     private View mFloatingActionModeOriginatingView;
+@@ -104,6 +113,7 @@ public class StatusBarWindowView extends FrameLayout {
+             mService.wakeUpIfDozing(SystemClock.uptimeMillis(), this);
+             return true;
+         }, null, null);
++        mQuickQsTotalHeight = 176;
+     }
+ 
+     @Override
+@@ -200,6 +210,19 @@ public class StatusBarWindowView extends FrameLayout {
+     protected void onAttachedToWindow () {
+         super.onAttachedToWindow();
+ 
++        //Dependency.get(TunerService.class).addTunable(this, DOUBLE_TAP_SLEEP_GESTURE);
++        mDoubleTapGesture = new GestureDetector(mContext,
++                new GestureDetector.SimpleOnGestureListener() {
++            @Override
++            public boolean onDoubleTap(MotionEvent e) {
++                PowerManager pm = mContext.getSystemService(PowerManager.class);
++                if (pm != null) {
++                    pm.goToSleep(e.getEventTime());
++                }
++                return true;
++            }
++        });
++
+         // We need to ensure that our window doesn't suffer from overdraw which would normally
+         // occur if our window is translucent. Since we are drawing the whole window anyway with
+         // the scrim, we don't need the window to be cleared in the beginning.
+@@ -301,6 +324,10 @@ public class StatusBarWindowView extends FrameLayout {
+             return true;
+         }
+         boolean intercept = false;
++        if (mDoubleTapToSleepEnabled
++                && ev.getY() < mQuickQsTotalHeight) {
++            mDoubleTapGesture.onTouchEvent(ev);
++        }
+         if (mNotificationPanel.isFullyExpanded()
+                 && mStackScrollLayout.getVisibility() == View.VISIBLE
+                 && mService.getBarState() == StatusBarState.KEYGUARD
+-- 
+2.17.1
+
